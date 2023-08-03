@@ -1,22 +1,35 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, DeviceEventEmitter } from 'react-native';
 
-const LINKING_ERROR =
-  `The package 'mediarecorder' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
+const Mediarecorder = NativeModules.Mediarecorder;
 
-const Mediarecorder = NativeModules.Mediarecorder
-  ? NativeModules.Mediarecorder
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
+DeviceEventEmitter.addListener('error', (data: Object) => {
+  if (typeof data === 'string') {
+    console.info(data);
+  } else {
+    console.info(JSON.stringify(data));
+  }
+});
+
+DeviceEventEmitter.addListener('info', (data: Object) => {
+  if (typeof data === 'string') {
+    console.info(data);
+  } else {
+    console.info(JSON.stringify(data));
+  }
+});
 
 export function multiply(a: number, b: number): Promise<number> {
   return Mediarecorder.multiply(a, b);
+}
+
+export function initMediaRecorder(): Promise<number> {
+  return Mediarecorder.initMediaRecorder();
+}
+
+export function startRecord(): Promise<number> {
+  return Mediarecorder.start();
+}
+
+export function stopRecord(): Promise<number> {
+  return Mediarecorder.stop();
 }
