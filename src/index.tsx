@@ -4,9 +4,9 @@ const Mediarecorder = NativeModules.Mediarecorder;
 
 DeviceEventEmitter.addListener('error', (data: Object) => {
   if (typeof data === 'string') {
-    console.info(data);
+    console.error(data);
   } else {
-    console.info(JSON.stringify(data));
+    console.error(JSON.stringify(data));
   }
 });
 

@@ -16,7 +16,13 @@ export default function App() {
   }, []);
 
   function mediaRecorder() {
-    initMediaRecorder();
+    initMediaRecorder()
+      .then(() => {
+        console.info('App.tsx -> mediaRecorder is setup');
+      })
+      .catch((e) => {
+        console.error('error : ', e);
+      });
   }
 
   function start() {

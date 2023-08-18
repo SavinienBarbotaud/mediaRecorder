@@ -5,6 +5,8 @@ import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
 import android.app.Application;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ComponentName;
@@ -19,6 +21,7 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
@@ -26,6 +29,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
@@ -44,11 +48,13 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @ReactModule(name = MediarecorderModule.NAME)
 public class MediarecorderModule extends ReactContextBaseJavaModule {
 
   private static final int SCREEN_RECORD_REQUEST_CODE = 101;
+  private static final int NOTIFICATION_REQUEST_CODE = 102;
   public static final String NAME = "Mediarecorder";
   private MediaRecorder recorder;
   private ReactApplicationContext reactContext;
@@ -56,8 +62,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   public int height;
   private MediaProjectionManager mediaProjectionManager;
   private MediaProjection mediaProjection;
-  public ForegroundService foregroundService;
-
+  private NotificationManager notificationManager;
   private Promise initRecordingPromise; //resolved on init
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
@@ -68,50 +73,53 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       int resultCode,
       Intent data
     ) {
-      sendEvent("info", "COUCOU2");
+      try {
+        Intent intent = new Intent(
+          getReactApplicationContext(),
+          ForegroundService.class
+        );
+        Log.d("info", "Intent created");
+        ComponentName componentName = getReactApplicationContext()
+          .startService(intent);
+        Log.d("info", "Service started");
+        /*if (componentName == null) {
+          initRecordingPromise.reject(
+            "initMediaRecorder",
+            "ForegroundService: Foreground service failed to start."
+          );
+        }*/
+      } catch (Exception e) {
+        catchError(e);
+        /*initRecordingPromise.reject(
+          "initMediaRecorder",
+          "ForegroundService: Foreground service failed to start."
+        );*/
+      }
+      initRecordingPromise.resolve(1);
+      //UP Start foreground on top UP
+      /*
       if (requestCode == SCREEN_RECORD_REQUEST_CODE) {
-        sendEvent("info", "COUCOU3");
         if (initRecordingPromise != null) {
           if (resultCode == Activity.RESULT_OK) {
+            //ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
             try {
-              sendEvent("info", "Starting foreground service...");
-              getReactApplicationContext()
-                .startService(
-                  new Intent(
-                    getReactApplicationContext(),
-                    ForegroundService.class
-                  )
-                );
-              sendEvent("info", "");
+              //mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
             } catch (Exception e) {
               catchError(e);
             }
-            //ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            try {
-              sendEvent("info", isMyServiceRunning(ForegroundService.class));
-              try {
-                mediaProjection =
-                  mediaProjectionManager.getMediaProjection(resultCode, data);
-              } catch (Exception e) {
-                catchError(e);
-              }
-              sendEvent("info", "COUCOU5");
-              if (mediaProjection != null) {
+            sendEvent("info", "COUCOU5");
+            initRecordingPromise.resolve(1);
+            if (mediaProjection != null) {
                 initScreenRecording();
                 initRecordingPromise.resolve(1);
-                sendEvent("info", "COUCOU6");
               } else {
                 initRecordingPromise.reject("");
               }
-            } catch (Exception e) {
-              catchError(e);
-            }
           } else {
             initRecordingPromise.reject("");
           }
-          initRecordingPromise = null;
         }
-      }
+      }*/
     }
   };
 
@@ -119,6 +127,10 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     super(reactContext);
     this.reactContext = reactContext;
     this.recorder = null;
+    this.notificationManager =
+      (NotificationManager) reactContext.getSystemService(
+        Context.NOTIFICATION_SERVICE
+      );
     this.mediaProjectionManager =
       (MediaProjectionManager) reactContext.getSystemService(
         Context.MEDIA_PROJECTION_SERVICE
@@ -146,11 +158,20 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       promise.reject("NO_ACTIVITY", "Activity is not available.");
       return;
     }
+
     this.initRecordingPromise = promise;
+    /*ASK SCREEN RECORD PERMISSION */
     Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
     getCurrentActivity()
       .startActivityForResult(captureIntent, SCREEN_RECORD_REQUEST_CODE);
-    this.sendEvent("info", "COUCOU1");
+
+
+
+    this.sendEvent(
+        "info",
+        "Notification state : " +
+        this.notificationManager.areNotificationsEnabled()
+      );
   }
 
   private void initScreenRecording() {
