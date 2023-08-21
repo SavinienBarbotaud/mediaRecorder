@@ -57,7 +57,7 @@ public class ForegroundService extends Service {
       /*ASK NOTIFICATION PERMISSION */
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         NotificationChannel channel = new NotificationChannel(
-          "my_channel_id",
+          "0",
           "My Channel",
           NotificationManager.IMPORTANCE_LOW
         );
@@ -70,7 +70,7 @@ public class ForegroundService extends Service {
       /*ASK NOTIFICATION PERMISSION */
 
       this.foregroundNotification =
-        new NotificationCompat.Builder(this, "my_channel_id")
+        new NotificationCompat.Builder(this, "0")
           .setContentTitle("React-native mediaRecorder")
           .setContentText("Is capturing your screen")
           .setPriority(Notification.PRIORITY_MIN)

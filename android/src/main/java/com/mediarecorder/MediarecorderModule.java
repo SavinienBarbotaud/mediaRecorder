@@ -1,5 +1,6 @@
 package com.mediarecorder;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
@@ -13,6 +14,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.display.DisplayManager;
 import android.media.MediaRecorder;
@@ -32,6 +34,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.BaseActivityEventListener;
@@ -64,6 +67,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   private MediaProjection mediaProjection;
   private NotificationManager notificationManager;
   private Promise initRecordingPromise; //resolved on init
+  public boolean isRunning;
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
     @Override
@@ -135,6 +139,8 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     }
 
     this.initRecordingPromise = promise;
+    this.recorder = new MediaRecorder();
+    this.isRunning = false;
 
     try {
       Intent intent = new Intent(
@@ -159,6 +165,19 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       );
     }
 
+    if (
+      ActivityCompat.checkSelfPermission(
+        getCurrentActivity(),
+        Manifest.permission.RECORD_AUDIO
+      ) !=
+      PackageManager.PERMISSION_GRANTED
+    ) {
+      ActivityCompat.requestPermissions(
+        getCurrentActivity(),
+        new String[] { Manifest.permission.RECORD_AUDIO },
+        0
+      );
+    }
     /*ASK SCREEN RECORD PERMISSION */
     Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
     getCurrentActivity()
@@ -172,9 +191,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   }
 
   private void initScreenRecording() {
-    if (this.recorder == null) {
-      this.recorder = new MediaRecorder();
-
+    if (this.recorder != null) {
       /* Action listeners */
       this.recorder.setOnInfoListener(
           (MediaRecorder mr, int what, int extra) -> {
@@ -199,8 +216,8 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
         this.recorder.setVideoSize(this.height, this.width);
 
-        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+        this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
 
         this.recorder.setVideoFrameRate(20);
         this.recorder.setOrientationHint(0);
@@ -209,13 +226,13 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
         File mOutputFile = this.getOutputFile();
         this.sendEvent("info", mOutputFile.toString());
         mOutputFile.getParentFile().mkdirs();
-        this.sendEvent("info", "MKDIR path");
         /* Set recording file */
 
         this.recorder.setOutputFile(mOutputFile.getAbsolutePath());
-        this.recorder.prepare();
 
-        try {
+        this.recorder.prepare();
+        this.sendEvent("info", "Prepare !");
+        /*try {
           Surface surface = this.recorder.getSurface();
           mediaProjection.createVirtualDisplay(
             "ScreenCapture",
@@ -228,12 +245,11 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
             null
           );
         } catch (Exception e) {
-          throw new Exception("getSurface or createVirtualDisplayFailed");
           StringWriter sw = new StringWriter();
           e.printStackTrace(new PrintWriter(sw));
           String exceptionAsString = sw.toString();
           throw new Exception(exceptionAsString);
-        }
+        }*/
       } catch (Exception e) {
         this.sendEvent("error", "Enable to prepare media recorder");
         StringWriter sw = new StringWriter();
@@ -246,16 +262,35 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void start(Promise promise) {
-    this.recorder.start();
-    this.sendEvent("info", "Record start");
-    promise.resolve(1);
+    if (!this.isRunning) {
+      try {
+        if (this.recorder != null) {
+          this.recorder.start();
+          this.isRunning = true;
+          this.sendEvent("info", "Record start");
+          promise.resolve(1);
+        } else {
+          this.sendEvent("error", "Prepare mediaRecorder before launch");
+          promise.reject("");
+        }
+      } catch (Exception e) {
+        this.sendEvent("error", "Enable to start media recorder");
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        String exceptionAsString = sw.toString();
+        this.sendEvent("error", exceptionAsString);
+        promise.reject("");
+      }
+    }
   }
 
   @ReactMethod
   public void stop(Promise promise) {
-    this.recorder.stop();
-    this.sendEvent("info", "Record stop");
-    promise.resolve(1);
+    if (this.isRunning) {
+      this.recorder.stop();
+      this.sendEvent("info", "Record stop");
+      promise.resolve(1);
+    }
   }
 
   @ReactMethod
