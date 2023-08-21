@@ -2,21 +2,54 @@
 
 react native media recorder
 
-## Installation
-
-```sh
-npm install mediarecorder
-```
-
 ## Usage
 
 ```js
-import { multiply } from 'mediarecorder';
-
-// ...
-
-const result = await multiply(3, 7);
+import { initMediaRecorder, startRecord, stopRecord } from 'mediarecorder';
 ```
+
+```js
+initMediaRecorder()
+      .then(() => {
+        console.info('mediaRecorder is setup');
+      })
+      .catch((e) => {
+        console.error('error : ', e);
+      });
+```
+
+then
+
+```js
+startRecord().then(() => {
+      console.info('start');
+    });
+```
+
+## Installation for dev
+
+On root repertory
+
+```sh
+npm install
+```
+
+Run the example app
+
+```sh
+cd example/ && npx react-native start
+```
+
+### Error SDK not found
+Run the command and attribute ANDROID_HOME variable :
+
+```sh
+ANDROID_HOME=/path/to/android/Sdk npx react-native start
+```
+
+## Error
+
+See [issues page](https://github.com/SavinienBarbotaud/mediaRecorder/issues) even for questions
 
 ## Contributing
 
@@ -25,7 +58,3 @@ See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the 
 ## License
 
 MIT
-
----
-
-Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)

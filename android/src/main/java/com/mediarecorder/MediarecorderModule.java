@@ -73,53 +73,28 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       int resultCode,
       Intent data
     ) {
-      try {
-        Intent intent = new Intent(
-          getReactApplicationContext(),
-          ForegroundService.class
-        );
-        Log.d("info", "Intent created");
-        ComponentName componentName = getReactApplicationContext()
-          .startService(intent);
-        Log.d("info", "Service started");
-        /*if (componentName == null) {
-          initRecordingPromise.reject(
-            "initMediaRecorder",
-            "ForegroundService: Foreground service failed to start."
-          );
-        }*/
-      } catch (Exception e) {
-        catchError(e);
-        /*initRecordingPromise.reject(
-          "initMediaRecorder",
-          "ForegroundService: Foreground service failed to start."
-        );*/
-      }
-      initRecordingPromise.resolve(1);
       //UP Start foreground on top UP
-      /*
       if (requestCode == SCREEN_RECORD_REQUEST_CODE) {
         if (initRecordingPromise != null) {
           if (resultCode == Activity.RESULT_OK) {
             //ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
             try {
-              //mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+              mediaProjection =
+                mediaProjectionManager.getMediaProjection(resultCode, data);
             } catch (Exception e) {
               catchError(e);
             }
-            sendEvent("info", "COUCOU5");
-            initRecordingPromise.resolve(1);
             if (mediaProjection != null) {
-                initScreenRecording();
-                initRecordingPromise.resolve(1);
-              } else {
-                initRecordingPromise.reject("");
-              }
+              initScreenRecording();
+              initRecordingPromise.resolve(1);
+            } else {
+              initRecordingPromise.reject("");
+            }
           } else {
             initRecordingPromise.reject("");
           }
         }
-      }*/
+      }
     }
   };
 
@@ -160,12 +135,34 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     }
 
     this.initRecordingPromise = promise;
+
+    try {
+      Intent intent = new Intent(
+        getReactApplicationContext(),
+        ForegroundService.class
+      );
+      Log.d("info", "Intent created");
+      ComponentName componentName = getReactApplicationContext()
+        .startService(intent);
+      Log.d("info", "Service started");
+      if (componentName == null) {
+        initRecordingPromise.reject(
+          "initMediaRecorder",
+          "ForegroundService: Service failed to start, component is null."
+        );
+      }
+    } catch (Exception e) {
+      catchError(e);
+      initRecordingPromise.reject(
+        "initMediaRecorder",
+        "ForegroundService: Foreground service failed to start. Exception error"
+      );
+    }
+
     /*ASK SCREEN RECORD PERMISSION */
     Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
     getCurrentActivity()
       .startActivityForResult(captureIntent, SCREEN_RECORD_REQUEST_CODE);
-
-
 
     this.sendEvent(
         "info",
@@ -194,17 +191,6 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
       try {
         int screenDensity = 320;
-        Surface surface = this.recorder.getSurface();
-        mediaProjection.createVirtualDisplay(
-          "ScreenCapture",
-          this.width,
-          this.height,
-          screenDensity,
-          DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-          surface,
-          null,
-          null
-        );
 
         this.recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         this.recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
@@ -228,6 +214,26 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
         this.recorder.setOutputFile(mOutputFile.getAbsolutePath());
         this.recorder.prepare();
+
+        try {
+          Surface surface = this.recorder.getSurface();
+          mediaProjection.createVirtualDisplay(
+            "ScreenCapture",
+            this.width,
+            this.height,
+            screenDensity,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            surface,
+            null,
+            null
+          );
+        } catch (Exception e) {
+          throw new Exception("getSurface or createVirtualDisplayFailed");
+          StringWriter sw = new StringWriter();
+          e.printStackTrace(new PrintWriter(sw));
+          String exceptionAsString = sw.toString();
+          throw new Exception(exceptionAsString);
+        }
       } catch (Exception e) {
         this.sendEvent("error", "Enable to prepare media recorder");
         StringWriter sw = new StringWriter();

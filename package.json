@@ -41,7 +41,8 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "mediarecorder"
   ],
   "repository": "https://github.com/SavinienBarbotaud/mediaRecorder",
   "author": "Savinien <savinien.barbotaud@apizee.com> (https://github.com/SavinienBarbotaud)",
