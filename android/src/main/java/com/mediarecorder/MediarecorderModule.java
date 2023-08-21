@@ -17,6 +17,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.hardware.display.DisplayManager;
+import android.icu.text.DateFormat;
 import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
@@ -50,6 +51,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -68,6 +70,11 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   private NotificationManager notificationManager;
   private Promise initRecordingPromise; //resolved on init
   public boolean isRunning;
+
+  private static String[] PERMISSIONS_STORAGE = {
+    Manifest.permission.READ_EXTERNAL_STORAGE,
+    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+  };
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
     @Override
@@ -178,6 +185,33 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
         0
       );
     }
+    if (
+      ActivityCompat.checkSelfPermission(
+        getCurrentActivity(),
+        Manifest.permission.CAMERA
+      ) !=
+      PackageManager.PERMISSION_GRANTED
+    ) {
+      ActivityCompat.requestPermissions(
+        getCurrentActivity(),
+        new String[] { Manifest.permission.CAMERA },
+        0
+      );
+    }
+
+    if (
+      ActivityCompat.checkSelfPermission(
+        getCurrentActivity(),
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+      ) !=
+      PackageManager.PERMISSION_GRANTED
+    ) {
+      ActivityCompat.requestPermissions(
+        getCurrentActivity(),
+        PERMISSIONS_STORAGE,
+        1
+      );
+    }
     /*ASK SCREEN RECORD PERMISSION */
     Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
     getCurrentActivity()
@@ -214,10 +248,10 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
         this.recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 
-        this.recorder.setVideoSize(this.height, this.width);
+        //this.recorder.setVideoSize(this.height, this.width);
 
-        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
-        this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.DEFAULT);
+        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
 
         this.recorder.setVideoFrameRate(20);
         this.recorder.setOrientationHint(0);
@@ -232,7 +266,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
         this.recorder.prepare();
         this.sendEvent("info", "Prepare !");
-        /*try {
+        try {
           Surface surface = this.recorder.getSurface();
           mediaProjection.createVirtualDisplay(
             "ScreenCapture",
@@ -249,7 +283,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
           e.printStackTrace(new PrintWriter(sw));
           String exceptionAsString = sw.toString();
           throw new Exception(exceptionAsString);
-        }*/
+        }
       } catch (Exception e) {
         this.sendEvent("error", "Enable to prepare media recorder");
         StringWriter sw = new StringWriter();
@@ -287,9 +321,23 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void stop(Promise promise) {
     if (this.isRunning) {
-      this.recorder.stop();
-      this.sendEvent("info", "Record stop");
-      promise.resolve(1);
+      try {
+        if (this.recorder != null) {
+          this.recorder.stop();
+          this.sendEvent("info", "Record stop");
+          promise.resolve(1);
+        } else {
+          this.sendEvent("error", "Prepare mediaRecorder before launch");
+          promise.reject("");
+        }
+      } catch (Exception e) {
+        this.sendEvent("error", "Enable to stop media recorder");
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        String exceptionAsString = sw.toString();
+        this.sendEvent("error", exceptionAsString);
+        promise.reject("");
+      }
     }
   }
 
@@ -300,13 +348,15 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
   }
 
   private File getOutputFile() {
-    String pattern = "yyyy-MM-dd";
+    String pattern = "yyyyMMdd_HHmmss";
     SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
+    String date = dateFormat.format(new Date());
+
     return new File(
       Environment.getExternalStorageDirectory().getAbsolutePath().toString() +
       "/Download/" +
       "RECORDING_" +
-      dateFormat.format(new Date()) +
+      date +
       ".mp4"
     );
   }
