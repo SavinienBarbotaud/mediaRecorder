@@ -19,13 +19,13 @@ export default function App() {
   }
 
   function start() {
-    mediaRecorder.startRecord().then(() => {
+    mediaRecorder.start().then(() => {
       console.info('start');
     });
   }
 
   function stop() {
-    mediaRecorder.stopRecord().then(() => {
+    mediaRecorder.stop().then(() => {
       console.info('stop');
     });
   }

@@ -5,11 +5,11 @@ react native media recorder
 ## Usage
 
 ```js
-import { initMediaRecorder, startRecord, stopRecord } from 'mediarecorder';
+import MediaRecorder from 'mediarecorder';
 ```
 
 ```js
-initMediaRecorder()
+MediaRecorder.initMediaRecorder()
       .then(() => {
         console.info('mediaRecorder is setup');
       })
@@ -21,7 +21,11 @@ initMediaRecorder()
 then
 
 ```js
-startRecord().then(() => {
+MediaRecorder.start().then(() => {
+      console.info('start');
+    });
+
+MediaRecorder.stop().then(() => {
       console.info('start');
     });
 ```

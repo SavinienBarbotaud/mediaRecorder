@@ -39,11 +39,11 @@ export default class MediaRecorder {
     return Mediarecorder.initMediaRecorder();
   }
 
-  public startRecord(): Promise<number> {
+  public start(): Promise<number> {
     return Mediarecorder.start();
   }
 
-  public stopRecord(): Promise<number> {
+  public stop(): Promise<number> {
     return Mediarecorder.stop();
   }
 
