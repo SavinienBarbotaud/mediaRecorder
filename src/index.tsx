@@ -18,18 +18,36 @@ DeviceEventEmitter.addListener('info', (data: Object) => {
   }
 });
 
-export function multiply(a: number, b: number): Promise<number> {
-  return Mediarecorder.multiply(a, b);
-}
-
-export function initMediaRecorder(): Promise<number> {
+/*export function initMediaRecorder(): Promise<number> {
   return Mediarecorder.initMediaRecorder();
-}
+}*/
 
-export function startRecord(): Promise<number> {
+/*export function startRecord(): Promise<number> {
   return Mediarecorder.start();
-}
+}*/
 
-export function stopRecord(): Promise<number> {
+/*export function stopRecord(): Promise<number> {
   return Mediarecorder.stop();
+}*/
+
+export default class MediaRecorder {
+  public MediaRecorder() {
+
+  }
+
+  public initMediaRecorder(): Promise<number> {
+    return Mediarecorder.initMediaRecorder();
+  }
+
+  public startRecord(): Promise<number> {
+    return Mediarecorder.start();
+  }
+
+  public stopRecord(): Promise<number> {
+    return Mediarecorder.stop();
+  }
+
+  /*public static sendEvent(type: string, data: string) {
+    MediaRecorder.dispatchEvent(type, data);
+  }*/
 }

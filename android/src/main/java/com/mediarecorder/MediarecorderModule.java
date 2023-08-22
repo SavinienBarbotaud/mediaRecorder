@@ -242,8 +242,10 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
 
         this.recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 
-        //this.recorder.setVideoSize(this.height, this.width);
-        this.recorder.setVideoSize(640, 480);
+        this.recorder.setVideoSize(this.width, this.height);
+        //this.sendMessage("info", this.height);
+        //this.sendMessage("info", this.width);
+        //this.recorder.setVideoSize(1280, 960);
 
         this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
         this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
@@ -327,7 +329,6 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
           Log.d("info", "Intent created");
           getReactApplicationContext().stopService(intent);
 
-          this.sendMessage("info", "Before stop");
           this.recorder.stop();
           this.isRunning = false;
           this.sendMessage("info", "Record stop");
