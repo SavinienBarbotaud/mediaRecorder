@@ -50,6 +50,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -97,7 +98,6 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
             }
             if (mediaProjection != null) {
               initScreenRecording();
-              initRecordingPromise.resolve(1);
             } else {
               initRecordingPromise.reject("");
             }
@@ -216,12 +216,6 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
     getCurrentActivity()
       .startActivityForResult(captureIntent, SCREEN_RECORD_REQUEST_CODE);
-
-    this.sendEvent(
-        "info",
-        "Notification state : " +
-        this.notificationManager.areNotificationsEnabled()
-      );
   }
 
   private void initScreenRecording() {
@@ -230,43 +224,45 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       this.recorder.setOnInfoListener(
           (MediaRecorder mr, int what, int extra) -> {
             int[] message = { what, extra };
-            this.sendEvent("info", message);
+            String messageString = Arrays.toString(message);
+            this.sendMessage("info", messageString);
           }
         );
       this.recorder.setOnErrorListener(
           (MediaRecorder mr, int what, int extra) -> {
             int[] message = { what, extra };
-            this.sendEvent("error", message);
+            String messageString = Arrays.toString(message);
+            this.sendMessage("error", messageString);
           }
         );
 
       try {
-        int screenDensity = 320;
-
         this.recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         this.recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
 
         this.recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 
         //this.recorder.setVideoSize(this.height, this.width);
+        this.recorder.setVideoSize(640, 480);
 
-        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        this.recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
         this.recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
 
-        this.recorder.setVideoFrameRate(20);
-        this.recorder.setOrientationHint(0);
+        this.recorder.setVideoEncodingBitRate(3000000);
+        this.recorder.setVideoFrameRate(16);
 
         /* Set recording file */
         File mOutputFile = this.getOutputFile();
-        this.sendEvent("info", mOutputFile.toString());
+        this.sendMessage("info", mOutputFile.toString());
         mOutputFile.getParentFile().mkdirs();
         /* Set recording file */
 
         this.recorder.setOutputFile(mOutputFile.getAbsolutePath());
 
         this.recorder.prepare();
-        this.sendEvent("info", "Prepare !");
+        this.sendMessage("info", "Prepare !");
         try {
+          int screenDensity = 1000000;
           Surface surface = this.recorder.getSurface();
           mediaProjection.createVirtualDisplay(
             "ScreenCapture",
@@ -284,12 +280,13 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
           String exceptionAsString = sw.toString();
           throw new Exception(exceptionAsString);
         }
+        this.initRecordingPromise.resolve(1);
       } catch (Exception e) {
-        this.sendEvent("error", "Enable to prepare media recorder");
+        this.sendMessage("error", "Enable to prepare media recorder");
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
         String exceptionAsString = sw.toString();
-        this.sendEvent("error", exceptionAsString);
+        this.sendMessage("error", exceptionAsString);
       }
     }
   }
@@ -301,18 +298,18 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
         if (this.recorder != null) {
           this.recorder.start();
           this.isRunning = true;
-          this.sendEvent("info", "Record start");
+          this.sendMessage("info", "Record start");
           promise.resolve(1);
         } else {
-          this.sendEvent("error", "Prepare mediaRecorder before launch");
+          this.sendMessage("error", "Prepare mediaRecorder before launch");
           promise.reject("");
         }
       } catch (Exception e) {
-        this.sendEvent("error", "Enable to start media recorder");
+        this.sendMessage("error", "Can't start media recorder");
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
         String exceptionAsString = sw.toString();
-        this.sendEvent("error", exceptionAsString);
+        this.sendMessage("error", exceptionAsString);
         promise.reject("");
       }
     }
@@ -323,19 +320,28 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     if (this.isRunning) {
       try {
         if (this.recorder != null) {
+          Intent intent = new Intent(
+            getReactApplicationContext(),
+            ForegroundService.class
+          );
+          Log.d("info", "Intent created");
+          getReactApplicationContext().stopService(intent);
+
+          this.sendMessage("info", "Before stop");
           this.recorder.stop();
-          this.sendEvent("info", "Record stop");
+          this.isRunning = false;
+          this.sendMessage("info", "Record stop");
           promise.resolve(1);
         } else {
-          this.sendEvent("error", "Prepare mediaRecorder before launch");
+          this.sendMessage("error", "Prepare mediaRecorder before launch");
           promise.reject("");
         }
       } catch (Exception e) {
-        this.sendEvent("error", "Enable to stop media recorder");
+        this.sendMessage("error", "Can't stop media recorder");
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
         String exceptionAsString = sw.toString();
-        this.sendEvent("error", exceptionAsString);
+        this.sendMessage("error", exceptionAsString);
         promise.reject("");
       }
     }
@@ -353,7 +359,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     String date = dateFormat.format(new Date());
 
     return new File(
-      Environment.getExternalStorageDirectory().getAbsolutePath().toString() +
+      "/storage/emulated/0/" + //Need to replace by something more consistent, but many devices have this path
       "/Download/" +
       "RECORDING_" +
       date +
@@ -372,18 +378,15 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
       this.width = metrics.widthPixels;
       this.height = metrics.heightPixels;
     } else {
-      this.sendEvent("error", "Cannot acces screen size");
+      this.sendMessage("error", "Cannot acces screen size");
     }
   }
 
   /*
    * Listeners callbacks
    */
-  public void sendEvent(String type, Object message) {
+  public void sendMessage(String type, Object message) {
     //Dispatch an event by using eventManager :
-    /*
-     * .emit("onevent", params);
-     */
     this.reactContext.getJSModule(
         DeviceEventManagerModule.RCTDeviceEventEmitter.class
       )
@@ -394,7 +397,7 @@ public class MediarecorderModule extends ReactContextBaseJavaModule {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));
     String exceptionAsString = sw.toString();
-    sendEvent("error", exceptionAsString);
+    this.sendMessage("error", exceptionAsString);
   }
 
   private boolean isMyServiceRunning(Class<?> serviceClass) {
